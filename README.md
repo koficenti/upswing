@@ -30,7 +30,8 @@
 
 ```
 
-Basic widget structure has been setup. Still needs a ton of work but at least I came up with the structure 😋
+Basic structure has been setup with a bit of placeholder code.
+Still needs a ton of work but at least I came up with the structure 😋
 
 Next I'm gonna work on the layout calculations, oh and add a draw_rect function. So I can visualize it.
 
