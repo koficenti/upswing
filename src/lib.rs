@@ -1,14 +1,20 @@
-pub mod test;
-pub mod widget;
-pub mod style;
-pub mod event;
 pub mod error;
-pub mod utils;
+pub mod event;
+pub mod platform;
 pub mod renderer;
-
+pub mod style;
+pub mod test;
+pub mod utils;
+pub mod widget;
 
 pub mod window {
-    use winit::{event::*, event_loop::{EventLoop, EventLoopBuilder}, window::WindowBuilder, dpi::Position, platform::windows::EventLoopBuilderExtWindows};
+    use winit::{
+        dpi::Position,
+        event::*,
+        event_loop::{EventLoop, EventLoopBuilder},
+        platform::windows::EventLoopBuilderExtWindows,
+        window::WindowBuilder,
+    };
 
     use wgpu::{
         util::DeviceExt, Backends, BindGroupDescriptor, BindGroupLayoutDescriptor, BindingResource,
@@ -104,7 +110,7 @@ pub mod window {
         Vertex {
             position: [0.0, 0.0, 0.0],
             color: [1.0, 0.0, 0.0],
-        }, // Top-left (red) 0 
+        }, // Top-left (red) 0
         Vertex {
             position: [0.0, 100.0, 0.0],
             color: [0.0, 1.0, 0.0],
@@ -153,8 +159,12 @@ pub mod window {
     impl State {
         fn update(&mut self) {}
         fn input(&mut self, event: &WindowEvent) -> bool {
-            match event{
-                WindowEvent::CursorMoved { device_id, position, modifiers } => {
+            match event {
+                WindowEvent::CursorMoved {
+                    device_id,
+                    position,
+                    modifiers,
+                } => {
                     self.window.request_redraw();
                     self.position = [position.x as f32 - 50.0, position.y as f32 - 50.0];
                     return true;
@@ -187,8 +197,8 @@ pub mod window {
                     occlusion_query_set: None,
                     timestamp_writes: None,
                 });
-                
-                render_pass.set_pipeline(&self.render_pipeline); 
+
+                render_pass.set_pipeline(&self.render_pipeline);
                 render_pass.set_bind_group(0, &self.window_bind_group, &[]);
                 render_pass.set_viewport(
                     0.0,
@@ -199,15 +209,16 @@ pub mod window {
                     1.0,
                 );
                 render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-                render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+                render_pass
+                    .set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
                 render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
             }
-            
+
             let vertices = [
                 Vertex {
                     position: [0.0 + self.position[0], 0.0 + self.position[1], 0.0],
                     color: [1.0, 0.0, 0.0],
-                }, // Top-left (red) 0 
+                }, // Top-left (red) 0
                 Vertex {
                     position: [0.0 + self.position[0], 100.0 + self.position[1], 0.0],
                     color: [0.0, 1.0, 0.0],
@@ -222,9 +233,16 @@ pub mod window {
                 },
             ];
 
-            self.queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&vertices));
-            
-            self.queue.write_buffer(&self.window_size_buffer, 0, bytemuck::cast_slice(&[WindowSize{size: [self.size.width as f32, self.size.height as f32]}]));
+            self.queue
+                .write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&vertices));
+
+            self.queue.write_buffer(
+                &self.window_size_buffer,
+                0,
+                bytemuck::cast_slice(&[WindowSize {
+                    size: [self.size.width as f32, self.size.height as f32],
+                }]),
+            );
 
             self.queue.submit(std::iter::once(encoder.finish()));
             output.present();
@@ -240,11 +258,11 @@ pub mod window {
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
         }
-        
+
         async fn new(window: winit::window::Window) -> Self {
             let size = window.inner_size();
             let num_vertices = VERTICES.len() as u32;
-            
+
             let instance = Instance::new(InstanceDescriptor {
                 backends: Backends::PRIMARY,
                 ..InstanceDescriptor::default()
@@ -257,7 +275,7 @@ pub mod window {
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
             };
-            
+
             let adapter = instance.request_adapter(&options).await;
 
             let adapter = match adapter {
@@ -266,8 +284,8 @@ pub mod window {
                     .request_adapter(&wgpu::RequestAdapterOptions::default())
                     .await
                     .expect("Failed to find any suitable adapter"),
-                };
-                let (device, queue) = adapter
+            };
+            let (device, queue) = adapter
                 .request_device(
                     &wgpu::DeviceDescriptor {
                         features: wgpu::Features::empty(),
@@ -283,17 +301,17 @@ pub mod window {
                 )
                 .await
                 .unwrap();
-            
+
             let surface_caps = surface.get_capabilities(&adapter);
-            
+
             let surface_format = surface_caps
-            .formats
+                .formats
                 .iter()
                 .copied()
                 .filter(|f| f.is_srgb())
                 .next()
                 .unwrap_or(surface_caps.formats[0]);
-            
+
             let config = wgpu::SurfaceConfiguration {
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
                 format: surface_format,
@@ -303,25 +321,24 @@ pub mod window {
                 alpha_mode: surface_caps.alpha_modes[0],
                 view_formats: vec![],
             };
-            
+
             let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("Shader"),
                 source: wgpu::ShaderSource::Wgsl(SHADER.into()),
             });
-            
-            
+
             let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
                 contents: bytemuck::cast_slice(VERTICES),
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             });
-            
+
             let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Index Buffer"),
                 contents: bytemuck::cast_slice(INDICES),
                 usage: wgpu::BufferUsages::INDEX,
             });
-    
+
             let window_size_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Window Size Buffer"),
                 contents: bytemuck::cast_slice(&[WindowSize {
@@ -329,7 +346,7 @@ pub mod window {
                 }]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
-            
+
             let window_bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
                 label: Some("Bind Group Layout"),
                 entries: &[wgpu::BindGroupLayoutEntry {
@@ -340,35 +357,35 @@ pub mod window {
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
-                        count: None,
-                    }],
-                });
-                
-                let window_bind_group = device.create_bind_group(&BindGroupDescriptor {
-                    label: Some("Bind Group"),
-                    layout: &window_bind_layout,
-                    entries: &[wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::Buffer(
-                            window_size_buffer.as_entire_buffer_binding(),
-                        ),
-                    }],
-                });
-                
-                let render_pipeline_layout =
+                    count: None,
+                }],
+            });
+
+            let window_bind_group = device.create_bind_group(&BindGroupDescriptor {
+                label: Some("Bind Group"),
+                layout: &window_bind_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(
+                        window_size_buffer.as_entire_buffer_binding(),
+                    ),
+                }],
+            });
+
+            let render_pipeline_layout =
                 device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("Render Pipeline Layout"),
                     bind_group_layouts: &[&window_bind_layout],
                     push_constant_ranges: &[],
                 });
 
-                let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some("Render Pipeline"),
-                    layout: Some(&render_pipeline_layout),
-                    vertex: wgpu::VertexState {
-                        module: &shader,
-                        entry_point: "vs_main",
-                        buffers: &[Vertex::desc()],
+            let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("Render Pipeline"),
+                layout: Some(&render_pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: "vs_main",
+                    buffers: &[Vertex::desc()],
                 },
                 fragment: Some(wgpu::FragmentState {
                     module: &shader,
@@ -397,8 +414,6 @@ pub mod window {
                 multiview: None,
             });
 
-
-
             let num_indices = INDICES.len() as u32;
             let position = [0.0, 0.0];
 
@@ -418,20 +433,19 @@ pub mod window {
                 num_indices,
                 window_size_buffer,
                 window_bind_group,
-                position
+                position,
             }
         }
     }
 
     pub async fn run(title: &str) {
         env_logger::init();
-        
+
         #[cfg(test)]
         let event_loop = EventLoop::from(EventLoopBuilder::new().with_any_thread(true).build());
 
         #[cfg(not(test))]
         let event_loop = EventLoop::new();
-
 
         let window = WindowBuilder::new()
             .with_title(title)

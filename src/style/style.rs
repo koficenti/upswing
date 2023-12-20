@@ -1,1 +1,3 @@
-pub fn sty() -> i32{ 32 }
+pub fn sty() -> i32 {
+    32
+}

@@ -4,14 +4,19 @@ pub struct Event<T> {
     callbacks: Vec<Box<dyn Fn(T) + 'static>>,
 }
 
-impl<T> Event<T> where T: Clone {
+impl<T> Event<T>
+where
+    T: Clone,
+{
     pub fn new() -> Self {
-        Self { callbacks: Vec::new() }
+        Self {
+            callbacks: Vec::new(),
+        }
     }
 
-    pub fn subscribe<F>(&mut self, callback: F)
+    pub fn subscribe<'a, F>(&'a mut self, callback: F)
     where
-        F: Fn(T) + 'static,
+        F: Fn(T) + 'a + 'static,
     {
         self.callbacks.push(Box::new(callback));
     }
